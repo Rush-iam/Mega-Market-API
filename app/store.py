@@ -6,8 +6,7 @@ from .database import Database
 
 
 def setup_store(app: Application):
-    db = Database(app['config']['db'])
-    app.on_shutdown.append(db.disconnect)
+    app.on_startup.append(Database.connect)
+    app.on_shutdown.append(Database.disconnect)
 
-    app['db'] = db
-    app['items'] = ItemAccessor(db)
+    app['items'] = ItemAccessor()

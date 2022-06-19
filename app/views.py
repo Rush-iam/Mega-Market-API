@@ -1,5 +1,5 @@
 from aiohttp.web_exceptions import HTTPNotFound
-from aiohttp.web_response import json_response
+from aiohttp.web_response import json_response, Response
 from aiohttp.web_urldispatcher import View
 from aiohttp_apispec import docs, json_schema, querystring_schema, match_info_schema
 
@@ -35,10 +35,9 @@ class ImportsView(View):
         description='Импортируемые элементы',
     )
     async def post(self):
-        print(self.request['json'])
-        # await self.request.app['items'].import_items(self.data.)
-        name = self.request.match_info.get('name', "Anonymous")
-        return json_response('"{"hello": "world"}"')
+        items = self.request['json']
+        await self.request.app['items'].import_many(items)
+        return Response()
 
 
 class DeleteView(View):
@@ -103,7 +102,7 @@ class NodesView(View):
     )
     @match_info_schema(schemas.Id)
     async def get(self):
-        node_id = self.request.match_info.get('id')
+        node_id = self.request.match_info.get('id')  # selectinload?
         return json_response('"{"hello": "world"}"')
 
 

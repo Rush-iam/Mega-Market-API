@@ -1,7 +1,11 @@
-from marshmallow import Schema, fields, validate
+import datetime
+from collections.abc import Generator
+
+from marshmallow import Schema, fields, validate, post_load
 
 
 # TODO enum class type?
+from .models import Item
 
 
 class ShopUnit(Schema):
@@ -21,7 +25,7 @@ class ShopUnit(Schema):
         nullable=False,
         description='Время последнего обновления элемента',
         example='2022-05-28T21:12:01.000Z',
-    )  # TODO: символ T!!! на всех датах
+    )
     parent_id = fields.UUID(
         data_key='parentId',
         allow_none=True,
@@ -67,11 +71,13 @@ class ShopUnitImport(ShopUnit):
 class ShopUnitImportRequest(Schema):
     items = fields.List(
         fields.Nested(ShopUnitImport),
+        required=True,
         nullable=False,
         description='Импортируемые элементы',
     )
     update_date = fields.AwareDateTime(
         data_key='updateDate',
+        required=True,
         nullable=False,
         description='Время обновления добавляемых товаров/категорий',
         example='2022-05-28T21:12:01.000Z',
@@ -79,6 +85,11 @@ class ShopUnitImportRequest(Schema):
 
     class Meta:
         ordered = True
+
+    @post_load
+    def make(self, data, **_) -> Generator[Item]:
+        date = data['update_date']
+        return (Item(date=date, **item_dict) for item_dict in data['items'])
 
 
 class Date(Schema):

@@ -17,8 +17,7 @@ def setup_middlewares(app: Application):
 @middleware
 async def error_middleware(request: Request, handler):
     try:
-        resp = await handler(request)
-        return resp
+        return await handler(request)
     except (ValidationError, HTTPUnprocessableEntity):
         return json_error(
             status_code=HTTPBadRequest.status_code,
