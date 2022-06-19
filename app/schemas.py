@@ -1,11 +1,13 @@
-import datetime
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
+from datetime import datetime
+from typing import Any
 
-from marshmallow import Schema, fields, validate, post_load
+from marshmallow import Schema, fields, validate, post_load, pre_dump, validates_schema, ValidationError
 
-
-# TODO enum class type?
 from .models import Item
+
+# TODO enum class для type?
+# TODO родителем товара или категории может быть только категория
 
 
 class ShopUnit(Schema):
@@ -34,13 +36,14 @@ class ShopUnit(Schema):
         example='3fa85f64-5717-4562-b3fc-2c963f66a444',
     )
     type = fields.Str(
-        required=True,
         validate=validate.OneOf(['OFFER', 'CATEGORY']),
+        required=True,
         description='Тип элемента - категория или товар',
     )
     price = fields.Int(
-        allow_none=True,
+        validate=validate.Range(min=0, max=2**63, max_inclusive=False),
         format='int64',
+        allow_none=True,
         nullable=True,
         description=''
         'Целое число, для категории - это средняя цена всех дочерних товаров'
@@ -50,9 +53,31 @@ class ShopUnit(Schema):
     )
     children = fields.List(
         fields.Nested(lambda: ShopUnit()),
+        nullable=True,
         description=''
         'Список всех дочерних товаров\\категорий. Для товаров поле равно null.'
     )
+
+    @validates_schema
+    def validate_category_price_is_null(self, data, **_):
+        if data.get('type') == 'CATEGORY' and data.get('price') is not None:
+            raise ValidationError('category price must be null')
+
+    @validates_schema
+    def validate_offer_price_is_not_null(self, data, **_):
+        if data.get('type') == 'OFFER' and data.get('price') is None:
+            raise ValidationError('offer price must be not null')
+
+    @validates_schema
+    def validate_offer_children_is_null(self, data, **_):
+        if data.get('type') == 'OFFER' and data.get('children') is not None:
+            raise ValidationError('offer children must be not null')
+
+    @pre_dump
+    def category_empty_children_list(self, item: Item, **_) -> Item:
+        if item.type == 'CATEGORY' and item.children is None:
+            item.children = []
+        return item
 
     class Meta:
         ordered = True
@@ -83,13 +108,20 @@ class ShopUnitImportRequest(Schema):
         example='2022-05-28T21:12:01.000Z',
     )
 
-    class Meta:
-        ordered = True
+    @validates_schema
+    def validate_unique_ids(self, data, **_):
+        if len(data['items']) != len(set(item['id'] for item in data['items'])):
+            raise ValidationError('multiple items with same id')
 
     @post_load
-    def make(self, data, **_) -> Generator[Item]:
+    def make_orm_objects(
+            self, data: Mapping[str, datetime | list[Any]], **_
+    ) -> Generator[Item]:
         date = data['update_date']
         return (Item(date=date, **item_dict) for item_dict in data['items'])
+
+    class Meta:
+        ordered = True
 
 
 class Date(Schema):

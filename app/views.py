@@ -66,8 +66,12 @@ class DeleteView(View):
     )
     @match_info_schema(schemas.Id)
     async def delete(self):
-        node_id = self.request.match_info.get('id')
-        return json_response('"{"hello": "world"}"')
+        item_id = self.request.match_info['id']
+        found = await self.request.app['items'].delete(item_id)
+        if not found:
+            raise ItemNotFound
+
+        return Response()
 
 
 class NodesView(View):
@@ -102,8 +106,13 @@ class NodesView(View):
     )
     @match_info_schema(schemas.Id)
     async def get(self):
-        node_id = self.request.match_info.get('id')  # selectinload?
-        return json_response('"{"hello": "world"}"')
+        item_id = self.request.match_info['id']  # TODO: selectinload?
+        item = await self.request.app['items'].get(item_id)
+        if item is None:
+            raise ItemNotFound
+
+        schema = schemas.ShopUnit()
+        return json_response(body=schema.dumps(item))
 
 
 class SalesView(View):

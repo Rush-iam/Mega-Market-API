@@ -35,3 +35,13 @@ class ItemAccessor(Database):
             #     children=uuid.uuid4().hex,
             # )
             # session.add(item)
+
+    async def get(self, item_id: int):
+        async with self.session() as db:
+            return await db.get(Item, item_id)
+
+    async def delete(self, item_id: int) -> bool:
+        async with self.session() as db:
+            if item := await db.get(Item, item_id):
+                await db.delete(item)
+            return item is not None

@@ -31,4 +31,4 @@ class Database:
 
     @classmethod
     def session(cls) -> AsyncSession:
-        return cls._session_maker()
+        return cls._session_maker.begin()
