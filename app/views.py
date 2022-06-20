@@ -1,3 +1,7 @@
+from collections.abc import Mapping
+from datetime import datetime
+from typing import Any
+
 from aiohttp.web_exceptions import HTTPNotFound
 from aiohttp.web_response import json_response, Response
 from aiohttp.web_urldispatcher import View
@@ -35,7 +39,8 @@ class ImportsView(View):
         description='Импортируемые элементы',
     )
     async def post(self):
-        items = self.request['json']
+        import_req: Mapping[str, datetime | list[Any]] = self.request['json']
+        items = schemas.ShopUnitImportRequest.make_orm_objects(import_req)
         await self.request.app['items'].import_many(items)
         return Response()
 
@@ -106,7 +111,7 @@ class NodesView(View):
     )
     @match_info_schema(schemas.Id)
     async def get(self):
-        item_id = self.request.match_info['id']  # TODO: selectinload?
+        item_id = self.request.match_info['id']
         item = await self.request.app['items'].get(item_id)
         if item is None:
             raise ItemNotFound

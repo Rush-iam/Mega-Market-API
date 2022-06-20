@@ -1,8 +1,8 @@
 from collections.abc import Generator, Mapping
 from datetime import datetime
-from typing import Any
+from typing import Any, MutableMapping
 
-from marshmallow import Schema, fields, validate, post_load, pre_dump, validates_schema, ValidationError
+from marshmallow import Schema, fields, validate, post_load, pre_dump, validates_schema, ValidationError, post_dump
 
 from .models import Item
 
@@ -68,24 +68,22 @@ class ShopUnit(Schema):
         if data.get('type') == 'OFFER' and data.get('price') is None:
             raise ValidationError('offer price must be not null')
 
-    @validates_schema
-    def validate_offer_children_is_null(self, data, **_):
-        if data.get('type') == 'OFFER' and data.get('children') is not None:
-            raise ValidationError('offer children must be not null')
-
-    @pre_dump
-    def category_empty_children_list(self, item: Item, **_) -> Item:
-        if item.type == 'CATEGORY' and item.children is None:
-            item.children = []
+    @post_dump
+    def offer_null_children(
+            self, item: MutableMapping[str, Any], **_
+    ) -> Mapping[str, Any]:
+        if item['type'] == 'OFFER':
+            item['children'] = None
         return item
 
     class Meta:
         ordered = True
+        dump_only = ('children',)
 
 
 class Id(ShopUnit):
     class Meta:
-        fields = ('id', )
+        fields = ('id',)
 
 
 class ShopUnitImport(ShopUnit):
@@ -113,9 +111,9 @@ class ShopUnitImportRequest(Schema):
         if len(data['items']) != len(set(item['id'] for item in data['items'])):
             raise ValidationError('multiple items with same id')
 
-    @post_load
+    @staticmethod
     def make_orm_objects(
-            self, data: Mapping[str, datetime | list[Any]], **_
+            data: Mapping[str, datetime | list[Any]], **_
     ) -> Generator[Item]:
         date = data['update_date']
         return (Item(date=date, **item_dict) for item_dict in data['items'])
@@ -152,7 +150,7 @@ class DateStartEnd(Schema):
 
 class ShopUnitStatisticUnit(ShopUnit):
     class Meta:
-        exclude = ('children', )
+        exclude = ('children',)
 
 
 class ShopUnitStatisticResponse(Schema):

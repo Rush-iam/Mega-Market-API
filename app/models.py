@@ -1,6 +1,6 @@
-from sqlalchemy import Column, CheckConstraint, BigInteger, String, TIMESTAMP
+from sqlalchemy import Column, CheckConstraint, ForeignKey, BigInteger, String, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship, backref
 
 Base = declarative_base()
 
@@ -9,10 +9,19 @@ class Item(Base):  # TODO: switch to Table()?
     id = Column(UUID(as_uuid=True), primary_key=True)
     name = Column(String, nullable=False)
     date = Column(TIMESTAMP(timezone=True), nullable=False)
-    parent_id: str | None = Column(UUID(as_uuid=True))
+    parent_id: str | None = Column(
+        UUID(as_uuid=True), ForeignKey(id, ondelete='CASCADE'),
+    )
     type = Column(String, CheckConstraint("type in ('OFFER', 'CATEGORY')"))
     price: int | None = Column(BigInteger, CheckConstraint('price >= 0'))
-    children: str | None = Column(UUID(as_uuid=True))
+
+    children = relationship(
+        lambda: Item,
+        cascade='save-update, merge, expunge, delete',
+        passive_deletes=True,
+        lazy='selectin',
+        join_depth=9999999,
+    )
 
     __tablename__ = 'items'
     __table_args__ = (
@@ -24,10 +33,10 @@ class Item(Base):  # TODO: switch to Table()?
             "type != 'OFFER' OR price IS NOT NULL",
             name='offer_price_is_not_null'
         ),
-        CheckConstraint(
-            "type != 'OFFER' OR children IS NULL",
-            name='offer_children_is_null'
-        ),
+        # CheckConstraint(
+        #     "type != 'OFFER' OR children IS NULL",
+        #     name='offer_children_is_null'
+        # ),
     )
 
     def __repr__(self):

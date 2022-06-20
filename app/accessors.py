@@ -2,8 +2,13 @@ import uuid
 from collections.abc import Iterable
 from datetime import datetime
 
+from marshmallow import ValidationError
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload, joinedload
 
+from . import schemas
 from .database import Database
 from .models import Item
 
@@ -14,16 +19,20 @@ class ItemAccessor(Database):
             insert_statement = insert(Item).values(
                 tuple(item.dict() for item in items)
             )
-            await db.execute(
-                insert_statement.on_conflict_do_update(
-                    constraint=Item.__table__.primary_key,
-                    set_={
-                        column.name: column
-                        for column in insert_statement.excluded
-                        if column.name != 'id'
-                    },
+            try:
+                await db.execute(
+                    insert_statement.on_conflict_do_update(
+                        constraint=Item.__table__.primary_key,
+                        set_={
+                            column.name: column
+                            for column in insert_statement.excluded
+                            if column.name != 'id'
+                        },
+                    )
                 )
-            )
+            except IntegrityError:
+                await db.rollback()
+                raise ValidationError('database integrity error')
 
             # item = Item(
             #     id=uuid.uuid4().hex,
@@ -37,7 +46,11 @@ class ItemAccessor(Database):
             # session.add(item)
 
     async def get(self, item_id: int):
-        async with self.session() as db:
+        async with self._session_maker() as db:
+            # result = await db.execute(select(Item).where(Item.id == item_id)
+            #     .options(selectinload(Item.children)))
+            # object = result.scalars().first()
+
             return await db.get(Item, item_id)
 
     async def delete(self, item_id: int) -> bool:

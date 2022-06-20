@@ -13,7 +13,7 @@ class Database:
     @classmethod
     async def connect(cls, app: Application):
         db_dsn = URL.create('postgresql+asyncpg', **app['config']['db'])
-        cls._engine = create_async_engine(db_dsn, future=True)
+        cls._engine = create_async_engine(db_dsn, future=True, echo=True)
         cls._session_maker = sessionmaker(
             cls._engine, expire_on_commit=False, class_=AsyncSession,
         )
