@@ -39,16 +39,27 @@ class Database:
         CREATE OR REPLACE FUNCTION update_category_date()
             RETURNS TRIGGER AS
         $$
-        BEGIN
-            UPDATE items SET date = NEW.date WHERE id = NEW.parent_id;
-            RETURN NEW;
-        END;
+            BEGIN
+                UPDATE items SET date = NEW.date WHERE id = NEW.parent_id;
+                RETURN NEW;
+            END;
         $$ language 'plpgsql';
         ''')
+
         update_category_date_trigger = DDL('''
         CREATE OR REPLACE TRIGGER update_category_date_e
             AFTER INSERT OR UPDATE ON items
             FOR EACH ROW EXECUTE PROCEDURE update_category_date();
+        ''')
+
+        get_item_type_function = DDL('''
+        CREATE OR REPLACE FUNCTION get_item_type(item_id UUID)
+            RETURNS VARCHAR AS
+        $$
+            BEGIN
+                RETURN (SELECT type FROM items WHERE id = item_id);
+            END;
+        $$ language 'plpgsql';
         ''')
 
         event.listen(
@@ -56,6 +67,9 @@ class Database:
         )
         event.listen(
             Item.__table__, 'after_create', update_category_date_trigger,
+        )
+        event.listen(
+            Item.__table__, 'before_create', get_item_type_function,
         )
 
         async with cls.engine() as conn:

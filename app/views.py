@@ -116,6 +116,7 @@ class NodesView(View):
         if item is None:
             raise ItemNotFound
 
+        item.fulfill_category_prices()
         schema = schemas.ShopUnit()
         return json_response(body=schema.dumps(item))
 

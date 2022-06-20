@@ -2,12 +2,11 @@ from collections.abc import Generator, Mapping
 from datetime import datetime
 from typing import Any, MutableMapping
 
-from marshmallow import Schema, fields, validate, post_load, pre_dump, validates_schema, ValidationError, post_dump
+from marshmallow import Schema, fields, validate, validates_schema, ValidationError, post_dump
 
 from .models import Item
 
 # TODO enum class для type?
-# TODO родителем товара или категории может быть только категория
 
 
 class ShopUnit(Schema):
