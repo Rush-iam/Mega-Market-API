@@ -3,19 +3,19 @@ from collections.abc import Iterable
 from datetime import datetime
 
 from marshmallow import ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload, joinedload
 
-from . import schemas
 from .database import Database
 from .models import Item
 
 
 class ItemAccessor(Database):
     async def import_many(self, items: Iterable[Item]):
-        async with self.connection() as db:
+        async with self.session() as db:
             insert_statement = insert(Item).values(
                 tuple(item.dict() for item in items)
             )
@@ -46,15 +46,16 @@ class ItemAccessor(Database):
             # session.add(item)
 
     async def get(self, item_id: int):
-        async with self._session_maker() as db:
+        async with self.session() as db:
+            return await db.get(Item, item_id)
+
             # result = await db.execute(select(Item).where(Item.id == item_id)
             #     .options(selectinload(Item.children)))
             # object = result.scalars().first()
 
-            return await db.get(Item, item_id)
-
     async def delete(self, item_id: int) -> bool:
         async with self.session() as db:
-            if item := await db.get(Item, item_id):
-                await db.delete(item)
-            return item is not None
+            result: CursorResult = await db.execute(
+                delete(Item).where(Item.id == item_id)
+            )
+            return result.rowcount != 0
