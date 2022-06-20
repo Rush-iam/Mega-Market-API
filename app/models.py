@@ -1,18 +1,22 @@
-from sqlalchemy import Column, CheckConstraint, ForeignKey, BigInteger, String, TIMESTAMP, event, select
+from sqlalchemy import Column, CheckConstraint, ForeignKey, BigInteger, String, TIMESTAMP, event, Integer
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base, relationship, backref, attributes, QueryContext, Session
-from sqlalchemy.orm.context import ORMSelectCompileState
-from sqlalchemy.sql import Select
+from sqlalchemy.orm import declarative_base, relationship, attributes, QueryContext
 
 Base = declarative_base()
 
+# class Stats(Base):
+#     id = Column(Integer, primary_key=True)
+#     date = Column(TIMESTAMP(timezone=True), nullable=False)
+#     item_id = Column(UUID(as_uuid=True), ForeignKey(Item.id, ondelete='CASCADE'))
+#     price = Column(BigInteger)
 
-class Item(Base):  # TODO: switch to Table()?
+
+class Item(Base):
     id = Column(UUID(as_uuid=True), primary_key=True)
     name = Column(String, nullable=False)
     date = Column(TIMESTAMP(timezone=True), nullable=False)
     parent_id: str | None = Column(
-        UUID(as_uuid=True), ForeignKey(id, ondelete='CASCADE'),
+        UUID(as_uuid=True), ForeignKey(id, ondelete='CASCADE'), index=True,
     )
     type = Column(String, CheckConstraint("type in ('OFFER', 'CATEGORY')"))
     price: int | None = Column(BigInteger, CheckConstraint('price >= 0'))

@@ -23,6 +23,7 @@ class ShopUnit(Schema):
         description='Имя категории',
     )
     date = fields.AwareDateTime(
+        format='%Y-%m-%dT%H:%M:%S.000Z',
         required=True,
         nullable=False,
         description='Время последнего обновления элемента',
@@ -59,12 +60,12 @@ class ShopUnit(Schema):
     )
 
     @validates_schema
-    def validate_category_price_is_null(self, data, **_):
+    def validate_category_price_is_null(self, data: Mapping[str, Any], **_):
         if data.get('type') == 'CATEGORY' and data.get('price') is not None:
             raise ValidationError('category price must be null')
 
     @validates_schema
-    def validate_offer_price_is_not_null(self, data, **_):
+    def validate_offer_price_is_not_null(self, data: Mapping[str, Any], **_):
         if data.get('type') == 'OFFER' and data.get('price') is None:
             raise ValidationError('offer price must be not null')
 
