@@ -3,11 +3,10 @@ from collections.abc import Iterable
 from datetime import datetime
 
 from marshmallow import ValidationError
-from sqlalchemy import select, delete
+from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import selectinload, joinedload
 
 from .database import Database
 from .models import Item
@@ -48,10 +47,6 @@ class ItemAccessor(Database):
     async def get(self, item_id: int):
         async with self.session() as db:
             return await db.get(Item, item_id)
-
-            # result = await db.execute(select(Item).where(Item.id == item_id)
-            #     .options(selectinload(Item.children)))
-            # object = result.scalars().first()
 
     async def delete(self, item_id: int) -> bool:
         async with self.session() as db:

@@ -1,6 +1,8 @@
-from sqlalchemy import Column, CheckConstraint, ForeignKey, BigInteger, String, TIMESTAMP
+from sqlalchemy import Column, CheckConstraint, ForeignKey, BigInteger, String, TIMESTAMP, event, select
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base, relationship, backref
+from sqlalchemy.orm import declarative_base, relationship, backref, attributes, QueryContext, Session
+from sqlalchemy.orm.context import ORMSelectCompileState
+from sqlalchemy.sql import Select
 
 Base = declarative_base()
 
@@ -19,8 +21,6 @@ class Item(Base):  # TODO: switch to Table()?
         lambda: Item,
         cascade='save-update, merge, expunge, delete',
         passive_deletes=True,
-        lazy='selectin',
-        join_depth=9999999,
     )
 
     __tablename__ = 'items'
@@ -33,14 +33,20 @@ class Item(Base):  # TODO: switch to Table()?
             "type != 'OFFER' OR price IS NOT NULL",
             name='offer_price_is_not_null'
         ),
-        # CheckConstraint(
-        #     "type != 'OFFER' OR children IS NULL",
-        #     name='offer_children_is_null'
-        # ),
     )
 
     def __repr__(self):
-        return f'Item(type={self.type}, name={self.name}, price={self.price}, date={self.date})'
+        return f'Item({self.type}, {self.name}, {self.price}, {self.date})'
 
     def dict(self):
-        return {col.name: getattr(self, col.name) for col in self.__table__.columns}
+        return {
+            col.name: getattr(self, col.name) for col in self.__table__.columns
+        }
+
+
+@event.listens_for(Item, 'load')
+def load_children(item: Item, _: QueryContext):
+    if item.type == 'OFFER':
+        attributes.set_committed_value(item, 'children', None)
+    elif item.type == 'CATEGORY':
+        attributes.set_committed_value(item, 'children', item.children)

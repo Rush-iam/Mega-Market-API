@@ -1,4 +1,5 @@
 from aiohttp.web_app import Application
+from sqlalchemy import event
 from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine, AsyncConnection
 from sqlalchemy.orm import sessionmaker
@@ -18,7 +19,7 @@ class Database:
             cls._engine, expire_on_commit=False, class_=AsyncSession,
         )
 
-        async with cls.connection() as conn:  # TODO move to migrations
+        async with cls.engine() as conn:  # TODO move to migrations
             await conn.run_sync(Base.metadata.create_all)
 
     @classmethod
@@ -26,7 +27,7 @@ class Database:
         await cls._engine.dispose()
 
     @classmethod
-    def connection(cls) -> AsyncConnection:
+    def engine(cls) -> AsyncConnection:
         return cls._engine.begin()
 
     @classmethod
