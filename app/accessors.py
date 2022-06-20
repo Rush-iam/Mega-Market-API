@@ -18,10 +18,11 @@ class ItemAccessor(Database):
             items = [item.dict() for item in items_objects]
             categories = [item for item in items if item['type'] == 'CATEGORY']
             offers = [item for item in items if item['type'] == 'OFFER']
+
             # Important order: categories first - to check offer parents
             for collection in categories, offers:
                 insert_statement = insert(Item).values(collection)
-                try:  # TODO: Изменение типа элемента с товара на категорию или с категории на товар не допускается.
+                try:
                     await db.execute(
                         insert_statement.on_conflict_do_update(
                             constraint=Item.__table__.primary_key,

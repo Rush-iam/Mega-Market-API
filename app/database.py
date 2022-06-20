@@ -35,42 +35,62 @@ class Database:
     # TODO: move init to migrations
     @classmethod
     async def _init(cls):
-        update_category_date_function = DDL('''
-        CREATE OR REPLACE FUNCTION update_category_date()
-            RETURNS TRIGGER AS
-        $$
-            BEGIN
-                UPDATE items SET date = NEW.date WHERE id = NEW.parent_id;
-                RETURN NEW;
-            END;
-        $$ language 'plpgsql';
-        ''')
-
-        update_category_date_trigger = DDL('''
-        CREATE OR REPLACE TRIGGER update_category_date_e
-            AFTER INSERT OR UPDATE ON items
-            FOR EACH ROW EXECUTE PROCEDURE update_category_date();
-        ''')
-
         get_item_type_function = DDL('''
         CREATE OR REPLACE FUNCTION get_item_type(item_id UUID)
             RETURNS VARCHAR AS
         $$
-            BEGIN
-                RETURN (SELECT type FROM items WHERE id = item_id);
-            END;
+        BEGIN
+            RETURN (SELECT type FROM items WHERE id = item_id);
+        END;
         $$ language 'plpgsql';
         ''')
 
-        event.listen(
-            Item.__table__, 'after_create', update_category_date_function,
-        )
-        event.listen(
-            Item.__table__, 'after_create', update_category_date_trigger,
-        )
-        event.listen(
-            Item.__table__, 'before_create', get_item_type_function,
-        )
+        update_category_date_function = DDL('''
+        CREATE OR REPLACE FUNCTION update_category_date()
+            RETURNS TRIGGER AS
+        $$
+        BEGIN
+            UPDATE items SET date = NEW.date WHERE id = NEW.parent_id;
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';
+        ''')
+
+        update_category_date_trigger = DDL('''
+        CREATE OR REPLACE TRIGGER update_category_date
+            AFTER INSERT OR UPDATE ON items
+            FOR EACH ROW EXECUTE PROCEDURE update_category_date();
+        ''')
+
+        exception_if_different_type = DDL('''
+        CREATE OR REPLACE FUNCTION exception_if_different_type()
+            RETURNS TRIGGER AS
+        $$
+        BEGIN
+            if (NEW.type IS NOT NULL) AND (NEW.type != OLD.type) THEN
+                RAISE EXCEPTION
+                    'Modification of column - type - is forbidden'
+                    USING ERRCODE = 'check_violation';
+            END IF;
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';
+        ''')
+
+        exception_if_different_type_trigger = DDL('''
+        CREATE OR REPLACE TRIGGER raise_exception_if_different_type
+            BEFORE UPDATE ON items
+            FOR EACH ROW EXECUTE PROCEDURE exception_if_different_type();
+        ''')
+
+        for event_trigger, event_action in (
+            ('before_create', get_item_type_function),
+            ('after_create', update_category_date_function),
+            ('after_create', update_category_date_trigger),
+            ('after_create', exception_if_different_type),
+            ('after_create', exception_if_different_type_trigger),
+        ):
+            event.listen(Item.__table__, event_trigger, event_action)
 
         async with cls.engine() as conn:
             await conn.run_sync(Base.metadata.create_all)

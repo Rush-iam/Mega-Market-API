@@ -1,5 +1,5 @@
 from aiohttp.web_app import Application
-from aiohttp.web_exceptions import HTTPUnprocessableEntity, HTTPBadRequest
+from aiohttp.web_exceptions import HTTPUnprocessableEntity, HTTPBadRequest, HTTPException
 from aiohttp.web_middlewares import middleware
 from aiohttp.web_request import Request
 from aiohttp.web_response import json_response
@@ -18,7 +18,7 @@ def setup_middlewares(app: Application):
 async def error_middleware(request: Request, handler):
     try:
         return await handler(request)
-    except (ValidationError, HTTPUnprocessableEntity):
+    except (ValidationError, HTTPUnprocessableEntity, HTTPBadRequest):
         return json_error(
             status_code=HTTPBadRequest.status_code,
             message="Validation Failed",
@@ -27,6 +27,11 @@ async def error_middleware(request: Request, handler):
         return json_error(
             status_code=e.status_code,
             message="Item not found",
+        )
+    except HTTPException as e:
+        return json_error(
+            status_code=e.status_code,
+            message=str(e),
         )
 
 
