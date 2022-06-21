@@ -2,11 +2,11 @@ from collections.abc import Generator, Mapping
 from datetime import datetime
 from typing import Any, MutableMapping
 
-from marshmallow import Schema, fields, validate, validates_schema, ValidationError, post_dump
+from marshmallow import (
+    Schema, fields, validate, validates_schema, ValidationError, post_dump
+)
 
-from .models import Item
-
-# TODO enum class для type?
+from .models import Item, ItemType
 
 
 class ShopUnit(Schema):
@@ -36,7 +36,7 @@ class ShopUnit(Schema):
         example='3fa85f64-5717-4562-b3fc-2c963f66a444',
     )
     type = fields.Str(
-        validate=validate.OneOf(['OFFER', 'CATEGORY']),
+        validate=validate.OneOf(list(ItemType)),
         required=True,
         description='Тип элемента - категория или товар',
     )
@@ -60,19 +60,19 @@ class ShopUnit(Schema):
 
     @validates_schema
     def validate_category_price_is_null(self, data: Mapping[str, Any], **_):
-        if data.get('type') == 'CATEGORY' and data.get('price') is not None:
+        if data.get('type') == ItemType.CATEGORY and data.get('price') is not None:
             raise ValidationError('category price must be null')
 
     @validates_schema
     def validate_offer_price_is_not_null(self, data: Mapping[str, Any], **_):
-        if data.get('type') == 'OFFER' and data.get('price') is None:
+        if data.get('type') == ItemType.OFFER and data.get('price') is None:
             raise ValidationError('offer price must be not null')
 
     @post_dump
     def offer_null_children(
             self, item: MutableMapping[str, Any], **_
     ) -> Mapping[str, Any]:
-        if item['type'] == 'OFFER' and 'children' in item:
+        if item['type'] == ItemType.OFFER and 'children' in item:
             item['children'] = None
         return item
 

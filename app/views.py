@@ -5,7 +5,9 @@ from typing import Any
 from aiohttp.web_exceptions import HTTPNotFound
 from aiohttp.web_response import json_response, Response
 from aiohttp.web_urldispatcher import View
-from aiohttp_apispec import docs, json_schema, querystring_schema, match_info_schema
+from aiohttp_apispec import (
+    docs, json_schema, querystring_schema, match_info_schema
+)
 
 from . import schemas
 
@@ -38,7 +40,7 @@ class ImportsView(View):
         schemas.ShopUnitImportRequest,
         description='Импортируемые элементы',
     )
-    async def post(self):
+    async def post(self) -> Response:
         import_req: Mapping[str, datetime | list[Any]] = self.request['json']
         items = schemas.ShopUnitImportRequest.make_orm_objects(import_req)
         await self.request.app['items'].import_many(items)
@@ -70,7 +72,7 @@ class DeleteView(View):
         }
     )
     @match_info_schema(schemas.Id)
-    async def delete(self):
+    async def delete(self) -> Response:
         item_id = self.request.match_info['id']
         found = await self.request.app['items'].delete(item_id)
         if not found:
@@ -110,7 +112,7 @@ class NodesView(View):
         },
     )
     @match_info_schema(schemas.Id)
-    async def get(self):
+    async def get(self) -> Response:
         item_id = self.request.match_info['id']
         item = await self.request.app['items'].get(item_id)
         if item is None:
@@ -141,7 +143,7 @@ class SalesView(View):
         }
     )
     @querystring_schema(schemas.Date)
-    async def get(self):
+    async def get(self) -> Response:
         date = self.request['querystring']['date']
         offers = await self.request.app['items'].get_offers_in_date_range(
             date - timedelta(days=1), date,
@@ -180,7 +182,7 @@ class StatisticView(View):
     )
     @match_info_schema(schemas.Id)
     @querystring_schema(schemas.DateStartEnd)
-    async def get(self):
+    async def get(self) -> Response:
         item_id = self.request.match_info.get('id')
         return json_response({})  # TODO
 

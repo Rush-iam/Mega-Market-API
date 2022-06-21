@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from .database import Database
 from .models import Item
+from .schemas import ItemType
 
 
 class ItemAccessor(Database):
@@ -42,7 +43,7 @@ class ItemAccessor(Database):
         async with self.session() as db:
             result: CursorResult = await db.execute(
                 select(Item).
-                where(Item.type == 'OFFER').
+                where(Item.type == ItemType.OFFER).
                 where(Item.date.between(start, end))
             )
             return result.scalars().all()

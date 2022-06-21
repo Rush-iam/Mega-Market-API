@@ -1,20 +1,14 @@
 from aiohttp import web
 from aiohttp.web_app import Application
 
-from .views import (
-    ImportsView,
-    DeleteView,
-    NodesView,
-    SalesView,
-    StatisticView,
-)
+from . import views
 
 
-def setup_routes(app: Application):
+def setup_routes(app: Application) -> None:
     app.add_routes([
-        web.view('/imports', ImportsView),
-        web.view('/delete/{id}', DeleteView),
-        web.view('/nodes/{id}', NodesView),
-        web.view('/sales', SalesView),
-        web.view('/node/{id}/statistic', StatisticView),
+        web.view('/imports', views.ImportsView),
+        web.view('/delete/{id}', views.DeleteView),
+        web.view('/nodes/{id}', views.NodesView),
+        web.view('/sales', views.SalesView),
+        web.view('/node/{id}/statistic', views.StatisticView),
     ])

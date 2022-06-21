@@ -3,10 +3,12 @@ import os
 from aiohttp.web_app import Application
 from sqlalchemy import event, DDL
 from sqlalchemy.engine import URL
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine, AsyncConnection
+from sqlalchemy.ext.asyncio import (
+    create_async_engine, AsyncEngine, AsyncConnection, AsyncSession
+)
 from sqlalchemy.orm import sessionmaker
 
-from .models import Base, Item
+from .models import Base, Item, ItemType
 
 
 class Database:
@@ -14,7 +16,7 @@ class Database:
     _session_maker: sessionmaker
 
     @classmethod
-    async def connect(cls, app: Application):
+    async def connect(cls, app: Application) -> None:
         cls._engine = create_async_engine(
             url=URL.create('postgresql+asyncpg', **app['config']['db']),
             future=True,  # TODO: remove after upgrading to SQLAlchemy 2.0
@@ -29,7 +31,7 @@ class Database:
         await cls._init()  # TODO: move init to migrations
 
     @classmethod
-    async def disconnect(cls, _: Application):
+    async def disconnect(cls, _: Application) -> None:
         await cls._engine.dispose()
 
     @classmethod
@@ -48,7 +50,7 @@ class Database:
             RETURNS VARCHAR AS
         $$
         BEGIN
-            RETURN (SELECT type FROM items WHERE id = item_id);
+            RETURN (SELECT type FROM %(table)s WHERE id = item_id);
         END;
         $$ language 'plpgsql';
         ''')
@@ -58,7 +60,7 @@ class Database:
             RETURNS TRIGGER AS
         $$
         BEGIN
-            UPDATE items SET date = NEW.date WHERE id = NEW.parent_id;
+            UPDATE %(table)s SET date = NEW.date WHERE id = NEW.parent_id;
             RETURN NEW;
         END;
         $$ language 'plpgsql';
@@ -66,7 +68,7 @@ class Database:
 
         update_category_date_trigger = DDL('''
         CREATE OR REPLACE TRIGGER update_category_date
-            AFTER INSERT OR UPDATE ON items
+            AFTER INSERT OR UPDATE ON %(table)s
             FOR EACH ROW EXECUTE PROCEDURE update_category_date();
         ''')
 
@@ -87,16 +89,16 @@ class Database:
 
         check_type_not_modified_trigger = DDL('''
         CREATE OR REPLACE TRIGGER check_type_not_modified
-            BEFORE UPDATE ON items
+            BEFORE UPDATE ON %(table)s
             FOR EACH ROW EXECUTE PROCEDURE check_type_not_modified();
         ''')
 
-        check_parent_is_category = DDL('''
+        check_parent_is_category = DDL(f'''
         CREATE OR REPLACE FUNCTION check_parent_is_category()
             RETURNS TRIGGER AS
         $$
         BEGIN
-            if get_item_type(NEW.parent_id) != 'CATEGORY' THEN
+            if get_item_type(NEW.parent_id) != '{ItemType.CATEGORY}' THEN
                 RAISE EXCEPTION
                     'Parent must be - CATEGORY'
                     USING ERRCODE = 'check_violation';
@@ -108,7 +110,7 @@ class Database:
 
         check_parent_is_category_trigger = DDL('''
         CREATE OR REPLACE TRIGGER check_parent_is_category
-            AFTER INSERT OR UPDATE ON items
+            AFTER INSERT OR UPDATE ON %(table)s
             FOR EACH ROW EXECUTE PROCEDURE check_parent_is_category();
         ''')
 
