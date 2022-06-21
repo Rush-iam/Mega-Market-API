@@ -7,12 +7,6 @@ from sqlalchemy.orm import declarative_base, relationship, attributes, QueryCont
 
 Base = declarative_base()
 
-# class Stats(Base):
-#     id = Column(Integer, primary_key=True)
-#     date = Column(TIMESTAMP(timezone=True), nullable=False)
-#     item_id = Column(UUID(as_uuid=True), ForeignKey(Item.id, ondelete='CASCADE'))
-#     price = Column(BigInteger)
-
 
 class Item(Base):
     id = Column(UUID(as_uuid=True), primary_key=True)
@@ -52,9 +46,9 @@ class Item(Base):
 
     def fulfill_category_prices(self):
         if self.type == 'CATEGORY':
-            self.count_category_offers_with_price_sum()
+            self._count_category_offers_and_prices_sum()
 
-    def count_category_offers_with_price_sum(self) -> tuple[int, int]:
+    def _count_category_offers_and_prices_sum(self) -> tuple[int, int]:
         count = 0
         price_sum = 0
         for child in self.children:
@@ -63,7 +57,7 @@ class Item(Base):
                 count += 1
                 price_sum += child.price
             elif child.type == 'CATEGORY':
-                cat_count, cat_sum = child.count_category_offers_with_price_sum()
+                cat_count, cat_sum = child._count_category_offers_and_prices_sum()
                 count += cat_count
                 price_sum += cat_sum
 

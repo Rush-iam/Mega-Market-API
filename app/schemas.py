@@ -72,7 +72,7 @@ class ShopUnit(Schema):
     def offer_null_children(
             self, item: MutableMapping[str, Any], **_
     ) -> Mapping[str, Any]:
-        if item['type'] == 'OFFER':
+        if item['type'] == 'OFFER' and 'children' in item:
             item['children'] = None
         return item
 
@@ -156,7 +156,7 @@ class ShopUnitStatisticUnit(ShopUnit):
 class ShopUnitStatisticResponse(Schema):
     items = fields.List(
         fields.Nested(ShopUnitStatisticUnit),
-        description='История в произвольном порядке',
+        description='Список в произвольном порядке',
     )
 
 

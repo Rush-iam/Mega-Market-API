@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from aiohttp.web_exceptions import HTTPNotFound
@@ -127,11 +127,7 @@ class SalesView(View):
         description=''
         'Получение списка **товаров**, цена которых была обновлена за последние'
         ' 24 часа включительно [now() - 24h, now()] от времени переданном в'
-        ' запросе.\n'
-        'Обновление цены не означает её изменение.\n'
-        'Обновления цен удаленных товаров недоступны.\n'
-        'При обновлении цены товара, средняя цена категории, которая содержит'
-        ' этот товар, тоже обновляется.\n',
+        ' запросе.\n',
         responses={
             200: {
                 'schema': schemas.ShopUnitStatisticResponse,
@@ -146,7 +142,12 @@ class SalesView(View):
     )
     @querystring_schema(schemas.Date)
     async def get(self):
-        return json_response('"{"hello": "world"}"')
+        date = self.request['querystring']['date']
+        offers = await self.request.app['items'].get_offers_in_date_range(
+            date - timedelta(days=1), date,
+        )
+        schema = schemas.ShopUnitStatisticResponse()
+        return json_response(body=schema.dumps({'items': offers}))
 
 
 class StatisticView(View):
@@ -180,5 +181,6 @@ class StatisticView(View):
     @match_info_schema(schemas.Id)
     @querystring_schema(schemas.DateStartEnd)
     async def get(self):
-        node_id = self.request.match_info.get('id')
-        return json_response('"{"hello": "world"}"')
+        item_id = self.request.match_info.get('id')
+        return json_response({})  # TODO
+

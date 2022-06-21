@@ -1,3 +1,5 @@
+import os
+
 from aiohttp.web_app import Application
 from sqlalchemy import event, DDL
 from sqlalchemy.engine import URL
@@ -13,10 +15,16 @@ class Database:
 
     @classmethod
     async def connect(cls, app: Application):
-        db_dsn = URL.create('postgresql+asyncpg', **app['config']['db'])
-        cls._engine = create_async_engine(db_dsn, future=True, echo=True)
+        cls._engine = create_async_engine(
+            url=URL.create('postgresql+asyncpg', **app['config']['db']),
+            future=True,  # TODO: remove after upgrading to SQLAlchemy 2.0
+            echo=os.getenv('DEBUG') is not None,
+        )
         cls._session_maker = sessionmaker(
-            cls._engine, expire_on_commit=False, class_=AsyncSession,
+            cls._engine,
+            expire_on_commit=False,
+            class_=AsyncSession,
+            future=True,  # TODO: remove after upgrading to SQLAlchemy 2.0
         )
         await cls._init()  # TODO: move init to migrations
 
