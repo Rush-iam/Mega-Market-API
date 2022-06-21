@@ -13,6 +13,7 @@ Base = declarative_base()
 #     item_id = Column(UUID(as_uuid=True), ForeignKey(Item.id, ondelete='CASCADE'))
 #     price = Column(BigInteger)
 
+
 class Item(Base):
     id = Column(UUID(as_uuid=True), primary_key=True)
     name = Column(String, nullable=False)
@@ -38,15 +39,6 @@ class Item(Base):
         CheckConstraint(
             "type != 'OFFER' OR price IS NOT NULL",
             name='offer_price_is_not_null',
-        ),
-        CheckConstraint(
-            "get_item_type(parent_id) = 'CATEGORY'",
-            name='offer_parent_is_category',
-        ),
-        CheckConstraint(
-            "type != 'OFFER' OR parent_id IS NULL "
-            "OR get_item_type(parent_id) IS NOT NULL",
-            name='offer_parent_category_exists',
         ),
     )
 

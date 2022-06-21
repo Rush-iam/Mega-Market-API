@@ -62,8 +62,8 @@ class Database:
             FOR EACH ROW EXECUTE PROCEDURE update_category_date();
         ''')
 
-        exception_if_different_type = DDL('''
-        CREATE OR REPLACE FUNCTION exception_if_different_type()
+        check_type_not_modified = DDL('''
+        CREATE OR REPLACE FUNCTION check_type_not_modified()
             RETURNS TRIGGER AS
         $$
         BEGIN
@@ -77,20 +77,43 @@ class Database:
         $$ language 'plpgsql';
         ''')
 
-        exception_if_different_type_trigger = DDL('''
-        CREATE OR REPLACE TRIGGER raise_exception_if_different_type
+        check_type_not_modified_trigger = DDL('''
+        CREATE OR REPLACE TRIGGER check_type_not_modified
             BEFORE UPDATE ON items
-            FOR EACH ROW EXECUTE PROCEDURE exception_if_different_type();
+            FOR EACH ROW EXECUTE PROCEDURE check_type_not_modified();
         ''')
 
-        for event_trigger, event_action in (
+        check_parent_is_category = DDL('''
+        CREATE OR REPLACE FUNCTION check_parent_is_category()
+            RETURNS TRIGGER AS
+        $$
+        BEGIN
+            if get_item_type(NEW.parent_id) != 'CATEGORY' THEN
+                RAISE EXCEPTION
+                    'Parent must be - CATEGORY'
+                    USING ERRCODE = 'check_violation';
+            END IF;
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';
+        ''')
+
+        check_parent_is_category_trigger = DDL('''
+        CREATE OR REPLACE TRIGGER check_parent_is_category
+            AFTER INSERT OR UPDATE ON items
+            FOR EACH ROW EXECUTE PROCEDURE check_parent_is_category();
+        ''')
+
+        for table_event, sql_statement in (
             ('before_create', get_item_type_function),
             ('after_create', update_category_date_function),
             ('after_create', update_category_date_trigger),
-            ('after_create', exception_if_different_type),
-            ('after_create', exception_if_different_type_trigger),
+            ('after_create', check_type_not_modified),
+            ('after_create', check_type_not_modified_trigger),
+            ('after_create', check_parent_is_category),
+            ('after_create', check_parent_is_category_trigger),
         ):
-            event.listen(Item.__table__, event_trigger, event_action)
+            event.listen(Item.__table__, table_event, sql_statement)
 
         async with cls.engine() as conn:
             await conn.run_sync(Base.metadata.create_all)
