@@ -184,5 +184,7 @@ class StatisticView(View):
     @querystring_schema(schemas.DateStartEnd)
     async def get(self) -> Response:
         item_id = self.request.match_info.get('id')
+        date_start = self.request['querystring']['date_start']
+        date_end = self.request['querystring']['date_end']
         return json_response({})  # TODO
 

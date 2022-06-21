@@ -2,6 +2,8 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import Any
 
+from alembic_utils.pg_function import PGFunction
+from alembic_utils.pg_trigger import PGTrigger
 from sqlalchemy import (
     Column, CheckConstraint, ForeignKey, BigInteger, String, TIMESTAMP, event, orm
 )
@@ -24,9 +26,20 @@ class Item(Base):
     )
     type = Column(
         String,
-        CheckConstraint(f"type in ('{ItemType.OFFER}', '{ItemType.CATEGORY}')")
+        # TODO: uncomment after Alembic 1.9+ implement column checks detection
+        # CheckConstraint(
+        #     f"type in ('{ItemType.OFFER}', '{ItemType.CATEGORY}')",
+        #     name='type_value_check'
+        # )
     )
-    price: int | None = Column(BigInteger, CheckConstraint('price >= 0'))
+    price: int | None = Column(
+        BigInteger,
+        # TODO: uncomment after Alembic 1.9+ implement column checks detection
+        # CheckConstraint(
+        #     'price >= 0',
+        #     name='price_value_check'
+        # )
+    )
 
     children = orm.relationship(
         lambda: Item,
@@ -44,6 +57,17 @@ class Item(Base):
             f"type != '{ItemType.OFFER}' OR price IS NOT NULL",
             name='offer_price_is_not_null',
         ),
+
+        # TODO: move to column after Alembic 1.9+ implement detection there
+        CheckConstraint(
+            f"type in ('{ItemType.OFFER}', '{ItemType.CATEGORY}')",
+            name='type_value_check'
+        ),
+        # TODO: move to column after Alembic 1.9+ implement detection there
+        CheckConstraint(
+            'price >= 0',
+            name='price_value_check'
+        )
     )
 
     def __repr__(self) -> str:
@@ -58,6 +82,7 @@ class Item(Base):
         if self.type == ItemType.CATEGORY:
             self._count_category_offers_and_prices_sum()
 
+    #  TODO: add caching
     def _count_category_offers_and_prices_sum(self) -> tuple[int, int]:
         count = 0
         price_sum = 0
@@ -82,3 +107,104 @@ def load_children(item: Item, _: orm.QueryContext) -> None:
         orm.attributes.set_committed_value(item, 'children', None)
     elif item.type == ItemType.CATEGORY:
         orm.attributes.set_committed_value(item, 'children', item.children)
+
+
+def item_database_triggers():
+    return {
+
+        'get_item_type': PGFunction(
+            schema='public',
+            signature='get_item_type(item_id UUID)',
+            definition=f'''
+                RETURNS VARCHAR AS
+                $$
+                BEGIN
+                    RETURN (
+                        SELECT type
+                            FROM {Item.__tablename__}
+                            WHERE id = item_id
+                    );
+                END;
+                $$ language 'plpgsql';
+            '''
+        ),
+
+        'update_category_date': PGFunction(
+            schema='public',
+            signature='update_category_date()',
+            definition=f'''
+                RETURNS TRIGGER AS
+                $$
+                BEGIN
+                    UPDATE {Item.__tablename__}
+                        SET date = NEW.date
+                        WHERE id = NEW.parent_id;
+                    RETURN NEW;
+                END;
+                $$ language 'plpgsql';
+            '''),
+        'update_category_date_trigger': PGTrigger(
+            schema='public',
+            signature='update_category_date',
+            on_entity=f'public.{Item.__tablename__}',
+            definition=f'''
+                AFTER INSERT OR UPDATE ON {Item.__tablename__} FOR EACH ROW
+                WHEN (NEW.parent_id IS NOT NULL)
+                EXECUTE PROCEDURE update_category_date();
+            '''
+        ),
+
+        'exception_type_modified': PGFunction(
+            schema='public',
+            signature='exception_type_modified()',
+            definition='''
+                RETURNS TRIGGER AS
+                $$
+                BEGIN
+                    RAISE EXCEPTION
+                        'Modification of column - type - is forbidden'
+                        USING ERRCODE = 'check_violation';
+                    RETURN NEW;
+                END;
+                $$ language 'plpgsql';
+            '''
+        ),
+        'check_type_modified_trigger': PGTrigger(
+            schema='public',
+            signature='check_type_modified',
+            on_entity=f'public.{Item.__tablename__}',
+            definition=f'''
+                BEFORE UPDATE ON {Item.__tablename__} FOR EACH ROW
+                WHEN (NEW.type IS DISTINCT FROM OLD.type)
+                EXECUTE PROCEDURE exception_type_modified();
+            '''
+        ),
+
+        'check_parent_is_category': PGFunction(
+            schema='public',
+            signature='check_parent_is_category()',
+            definition=f'''
+                RETURNS TRIGGER AS
+                $$
+                BEGIN
+                if get_item_type(NEW.parent_id) != '{ItemType.CATEGORY}' THEN
+                    RAISE EXCEPTION
+                        'Parent must be - {ItemType.CATEGORY}'
+                        USING ERRCODE = 'check_violation';
+                END IF;
+                RETURN NEW;
+                END;
+                $$ language 'plpgsql';
+            ''',
+        ),
+        'check_parent_is_category_trigger': PGTrigger(
+            schema='public',
+            signature='check_parent_is_category',
+            on_entity=f'public.{Item.__tablename__}',
+            definition=f'''
+                AFTER INSERT OR UPDATE ON {Item.__tablename__} FOR EACH ROW
+                EXECUTE PROCEDURE check_parent_is_category();
+            '''
+        ),
+
+    }.values()

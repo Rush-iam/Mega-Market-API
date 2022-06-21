@@ -1,23 +1,24 @@
+import os
+from typing import Any
+
+import yaml
 from aiohttp import web
 from aiohttp.web_app import Application
 from aiohttp_apispec import setup_aiohttp_apispec
 
-from app.routes import setup_routes
-from app.middlewares import setup_middlewares
-from app.store import setup_store
+
+def get_config() -> dict[str, Any]:
+    with open(os.environ.get("CONFIG_PATH", "config.yml")) as file:
+        return yaml.safe_load(file)
 
 
 async def app_factory() -> Application:
-    app = web.Application()
+    from app.routes import setup_routes
+    from app.middlewares import setup_middlewares
+    from app.store import setup_store
 
-    app['config'] = {  # TODO config file or envs
-        'db': {
-            'database': 'mega_market',
-            'username': 'postgres',
-            'password': 'j3qq4',
-            'host': 'localhost',
-        }
-    }
+    app = web.Application()
+    app['config'] = get_config()
 
     setup_aiohttp_apispec(
         app=app,
