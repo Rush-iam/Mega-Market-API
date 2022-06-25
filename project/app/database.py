@@ -1,6 +1,9 @@
+import logging
 import os
 
 from aiohttp.web_app import Application
+from aiohttp.web_runner import GracefulExit
+from asyncpg import ConnectionDoesNotExistError
 from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import (
     create_async_engine, AsyncEngine, AsyncConnection, AsyncSession

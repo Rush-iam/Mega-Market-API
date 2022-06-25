@@ -22,15 +22,10 @@ class ItemAccessor(Database):
                 await db.execute(
                     insert_statement.on_conflict_do_update(
                         constraint=Item.__table__.primary_key,
-                        set_={
-                            column.name: column
-                            for column in insert_statement.excluded
-                            if column.name != 'id'
-                        },
+                        set_=insert_statement.excluded,
                     )
                 )
             except IntegrityError:
-                await db.rollback()
                 raise ValidationError('database integrity error')
 
     async def get(self, item_id: int) -> Item:

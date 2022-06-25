@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:alpine
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+  app:
+    depends_on:
+      - db
+    build:
+      context: ../
+      dockerfile: deploy/project/Dockerfile
+    environment:
+      DB_HOST: "db"
+    ports:
+      - "80:80"
+    restart: always
+
+
+volumes:
+  db:

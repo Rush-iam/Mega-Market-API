@@ -4,6 +4,7 @@ from typing import Any
 
 from aiohttp.web_exceptions import HTTPNotFound
 from aiohttp.web_response import json_response, Response
+from aiohttp.web_runner import GracefulExit
 from aiohttp.web_urldispatcher import View
 from aiohttp_apispec import (
     docs, json_schema, querystring_schema, match_info_schema

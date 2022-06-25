@@ -1,5 +1,0 @@
-db:
-  database: mega_market
-  username: postgres
-  password: j3qq4
-  host: localhost

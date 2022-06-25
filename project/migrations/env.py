@@ -7,11 +7,11 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection, URL
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from mega_market.app import models
+from project.app import models
 
 
 def get_app_database_url() -> str:
-    from mega_market.main import get_config
+    from project.main import get_config
     return str(URL.create('postgresql+asyncpg', **get_config()['db']))
 
 
