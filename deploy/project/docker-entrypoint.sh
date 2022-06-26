@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-if [ ! -f "MIGRATION_DONE" ];
+if [ ! -f "MIGRATIONS_DONE" ];
 then
-  alembic upgrade head && touch "MIGRATION_DONE" || exit 1
+  alembic upgrade head && touch "MIGRATIONS_DONE" || exit 1
 fi
 
 exec "$@"

@@ -1,1 +1,11 @@
-Generic single-database configuration with an async dbapi.
+- Create migration:
+alembic revision --autogenerate -m "Comment"
+
+- Apply migrations:
+alembic upgrade head
+
+- Revert migration:
+alembic downgrade -1
+
+- Drop database:
+alembic downgrade base

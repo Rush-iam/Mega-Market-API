@@ -82,7 +82,6 @@ class Item(Base):
         if self.type == ItemType.CATEGORY:
             self._count_category_offers_and_prices_sum()
 
-    #  TODO: add caching
     def _count_category_offers_and_prices_sum(self) -> tuple[int, int]:
         count = 0
         price_sum = 0
