@@ -9,11 +9,18 @@ from sqlalchemy.orm import sessionmaker
 
 
 class Database:
+    """
+    Contains methods for creating database sessions
+    """
+
     _engine: AsyncEngine
     _session_maker: sessionmaker
 
     @classmethod
     async def connect(cls, app: Application) -> None:
+        """
+        Prepares internal configuration which will be used later for DB sessions
+        """
         cls._engine = create_async_engine(
             url=URL.create('postgresql+asyncpg', **app['config']['db']),
             future=True,  # TODO: remove after upgrading to SQLAlchemy 2.0
@@ -32,8 +39,14 @@ class Database:
 
     @classmethod
     def engine(cls) -> AsyncConnection:
+        """
+        Start autocommit session with ``SQLAlchemy`` Core functions
+        """
         return cls._engine.begin()
 
     @classmethod
     def session(cls) -> AsyncSession:
+        """
+        Start autocommit session with ``SQLAlchemy`` ORM functions
+        """
         return cls._session_maker.begin()

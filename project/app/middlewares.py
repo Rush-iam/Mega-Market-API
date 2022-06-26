@@ -15,6 +15,8 @@ from .views import ItemNotFound
 
 def setup_middlewares(app: Application) -> None:
     app.middlewares.append(error_middleware)
+
+    # marshmallow validator for requests:
     app.middlewares.append(validation_middleware)
 
 
@@ -23,6 +25,10 @@ async def error_middleware(
         request: Request,
         handler: Callable[[Request], Awaitable[StreamResponse]]
 ) -> StreamResponse:
+    """
+    Middleware to convert HTTP Exceptions to JSON responses for clients.
+    """
+
     try:
         return await handler(request)
     except (ValidationError, HTTPUnprocessableEntity, HTTPBadRequest):

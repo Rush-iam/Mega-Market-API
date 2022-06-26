@@ -11,7 +11,7 @@ from dotenv import dotenv_values
 
 def get_config() -> dict[str, Any]:
     """
-    Create nested dict of options from .env config file.
+    Returns nested dict of options from .env config file.
     You can override option with an environment variable.
 
     Example .env file:
@@ -37,6 +37,11 @@ def get_config() -> dict[str, Any]:
 
 
 async def app_factory() -> Application:
+    """
+    Returns runnable aiohttp application,
+    that can be passed as an argument to ``aiohttp.web.runapp()``
+    """
+
     from app.routes import setup_routes
     from app.middlewares import setup_middlewares
     from app.store import setup_store

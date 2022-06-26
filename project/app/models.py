@@ -18,6 +18,9 @@ class ItemType(str, Enum):
 
 
 class Item(Base):
+    """
+    ORM class which maps to database table
+    """
     id = Column(UUID(as_uuid=True), primary_key=True)
     name = Column(String, nullable=False)
     date = Column(TIMESTAMP(timezone=True), nullable=False)
@@ -26,7 +29,7 @@ class Item(Base):
     )
     type = Column(
         String,
-        # TODO: uncomment after Alembic 1.9+ implement column checks detection
+        # TODO: uncomment after Alembic 1.9+ implements column checks detection
         # CheckConstraint(
         #     f"type in ('{ItemType.OFFER}', '{ItemType.CATEGORY}')",
         #     name='type_value_check'
@@ -34,7 +37,7 @@ class Item(Base):
     )
     price: int | None = Column(
         BigInteger,
-        # TODO: uncomment after Alembic 1.9+ implement column checks detection
+        # TODO: uncomment after Alembic 1.9+ implements column checks detection
         # CheckConstraint(
         #     'price >= 0',
         #     name='price_value_check'
@@ -58,12 +61,12 @@ class Item(Base):
             name='offer_price_is_not_null',
         ),
 
-        # TODO: move to column after Alembic 1.9+ implement detection there
+        # TODO: move to column after Alembic 1.9+ implements detection there
         CheckConstraint(
             f"type in ('{ItemType.OFFER}', '{ItemType.CATEGORY}')",
             name='type_value_check'
         ),
-        # TODO: move to column after Alembic 1.9+ implement detection there
+        # TODO: move to column after Alembic 1.9+ implements detection there
         CheckConstraint(
             'price >= 0',
             name='price_value_check'
@@ -74,15 +77,24 @@ class Item(Base):
         return f'Item({self.type}, {self.name}, {self.price}, {self.date})'
 
     def dict(self) -> Mapping[str, Any]:
+        """
+        Converts ``Item`` columns and values to ``dict``
+        """
         return {
             col.name: getattr(self, col.name) for col in self.__table__.columns
         }
 
     def fulfill_category_prices(self) -> None:
+        """
+        We don't store price data for Category, so calculate it on demand
+        """
         if self.type == ItemType.CATEGORY:
             self._count_category_offers_and_prices_sum()
 
     def _count_category_offers_and_prices_sum(self) -> tuple[int, int]:
+        """
+        Recursively calculates average ``price`` of child Offers to update Category ``price``
+        """
         count = 0
         price_sum = 0
         for child in self.children:
@@ -102,6 +114,9 @@ class Item(Base):
 
 @event.listens_for(Item, 'load')
 def load_children(item: Item, _: orm.QueryContext) -> None:
+    """
+    Function to preload all ``Item`` children to avoid SQLAlchemy's lazy loading
+    """
     if item.type == ItemType.OFFER:
         orm.attributes.set_committed_value(item, 'children', None)
     elif item.type == ItemType.CATEGORY:
@@ -109,6 +124,9 @@ def load_children(item: Item, _: orm.QueryContext) -> None:
 
 
 def item_database_triggers():
+    """
+    Various PostgreSQL database trigger validations.
+    """
     return {
 
         'get_item_type': PGFunction(

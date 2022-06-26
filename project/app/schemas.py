@@ -10,6 +10,9 @@ from .models import Item, ItemType
 
 
 class ShopUnit(Schema):
+    """
+    Base ``Item`` schema to validate and (de)serialize requests/responses
+    """
     id = fields.UUID(
         required=True,
         nullable=False,
