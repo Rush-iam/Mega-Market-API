@@ -68,6 +68,7 @@
 2) Установите требуемые зависимости _([виртуальное окружение](https://docs.python.org/3.10/tutorial/venv.html))_:
 
 `pip install -r requirements.txt`
+
 3) Настройте конфигурацию подключения к **PostgreSQL** в файле `config.env`:
 ```
 DB_HOST=localhost
